@@ -1,64 +1,92 @@
-# Deploying a client
+# Deploying the website to the Oracle server
 
-Each client gets its own copy: its own folder, Docker project, port, database volume and address. The examples use the Plant Store demo (`plantstore`, port `8110`); pick a new name and a free port for each client and record them in the server's port register.
+The site runs as its own small container on the shared Oracle VM (`svc-agent`, 140.238.251.141), bound to `127.0.0.1` only. The server's Caddy is the front door and handles HTTPS.
 
-| | Example |
-|---|---|
-| Folder | `~/plantstore-dm` |
-| Docker project | `plantstore` (`CLIENT` in `deploy/.env`) |
-| Port | `127.0.0.1:8110` (`PORT` in `deploy/.env`) |
-| Data | Docker volume `plantstore_data` |
-| Secrets | `deploy/.env` on the server only |
+| | Value |
+| --- | --- |
+| Address | https://bhava.140-238-251-141.sslip.io (until a real domain is bought) |
+| Folder | `~/bhava-site` |
+| Docker project | `bhava-site` (service `web`) |
+| Port | `127.0.0.1:8150`, proposed. Confirm it is free first (step 2). |
+| Caddy site file | `/etc/caddy/sites/bhava-site.caddy` (or `bhava.caddy` if made with `add-site.sh`) |
+| Data | None. The site is static, so there is no volume to back up. |
 
-On a shared server: only touch this client's project, never publish on `0.0.0.0`, and never run `docker compose down -v` (it deletes the client's data).
+Ports already taken on this server: 8000 (alerts), 8080 (service bot), 8100 (Mehta Mart), 8110 (Plant Store demo), 8120 and 8130 (NurseryPOS), 8140 (Bhava QA).
+
+## Shared-server rules
+
+- Touch only the `bhava-site` folder, container and Caddy site file.
+- Never stop, restart or edit other projects' containers or Caddy site files.
+- Never publish on `0.0.0.0`, never run `docker compose down -v` or `docker system prune -a`.
+- Back up the main Caddyfile before any Caddy change.
 
 ## First deploy
 
+1. **Connect.** Disconnect the Voltas VPN first; port 22 times out on the office network. Use a phone hotspot or Oracle Cloud Shell if it still times out.
+
+   ```bash
+   ssh -i ~/.ssh/oracle-svc-agent.key ubuntu@140.238.251.141
+   ```
+
+2. **Get the code and check the port (read-only).**
+
+   ```bash
+   git clone https://github.com/nexoraconsulting001-art/Auto_DM_Plugin ~/bhava-site
+   cd ~/bhava-site
+   bash deploy/check-server.sh 8150      # must end with "Port 8150 is free."
+   ```
+
+   If 8150 is taken, try 8151, 8152 and so on, and use that number in steps 3 and 5.
+
+3. **Set the port and start the container.**
+
+   ```bash
+   cd ~/bhava-site/deploy
+   cp .env.example .env && nano .env     # PORT=8150 (or the free port from step 2)
+   docker compose up -d --build
+   curl -s -o /dev/null -w "%{http_code}\n" 127.0.0.1:8150/            # 200
+   curl -s -o /dev/null -w "%{http_code}\n" 127.0.0.1:8150/pricing     # 200
+   curl -s -o /dev/null -w "%{http_code}\n" 127.0.0.1:8150/nope        # 404
+   ```
+
+4. **Back up Caddy's config.**
+
+   ```bash
+   sudo cp /etc/caddy/Caddyfile /etc/caddy/Caddyfile.bak-$(date +%F-%H%M)
+   sudo cp -r /etc/caddy/sites /etc/caddy/sites.bak-$(date +%F-%H%M)
+   ```
+
+5. **Add the site to Caddy.** Either use the server's helper, as for the other sites:
+
+   ```bash
+   sudo bash ~/Service-Call-Bot/infra/oracle-vm/add-site.sh bhava proxy 8150
+   ```
+
+   or copy the site block in this repo (check that its port matches):
+
+   ```bash
+   sudo cp ~/bhava-site/deploy/bhava-site.caddy /etc/caddy/sites/bhava-site.caddy
+   sudo caddy validate --config /etc/caddy/Caddyfile && sudo systemctl reload caddy
+   ```
+
+6. **Check it from outside:** open https://bhava.140-238-251-141.sslip.io on a phone. The first visit can take a few seconds while Caddy gets the certificate.
+
+## Updating
+
 ```bash
-free -h                                     # each copy needs about 250 MB
-
-git clone https://github.com/Shashank-Codes-bit/Auto_DM_Plugin ~/plantstore-dm
-cd ~/plantstore-dm/deploy
-cp .env.example .env && nano .env           # CLIENT, PORT, PUBLIC_BASE_URL, owner login, SESSION_SECRET, Instagram keys
-
-docker compose up -d --build
-curl -s -o /dev/null -w "%{http_code}\n" 127.0.0.1:8110/health    # 200 (a 000 right after start is normal; retry)
-
-# Put it on the internet through the reverse proxy (Caddy example):
-sudo bash ~/Service-Call-Bot/infra/oracle-vm/add-site.sh plantstore proxy 8110
+cd ~/bhava-site && git pull && cd deploy && docker compose up -d --build
+docker compose logs web --tail 30      # logs, this project only
 ```
 
-## Connect Instagram
+Once every detail in `site.config.json` is confirmed, set `BUILD_FLAGS=--release` in `deploy/.env`. The build then fails, and the running site stays as it was, if anything is still open.
 
-**The client has its own Meta app:** set its webhook callback to `PUBLIC_BASE_URL/webhook` with your `VERIFY_TOKEN`, field `comments`.
-
-**The account is already used by another app (shared webhook):** keep Meta pointing at the other app, and:
-1. In the other app's `.env`: `FORWARD_WEBHOOK_URL=<this PUBLIC_BASE_URL>/webhook` and `PLUGIN_URL=<this PUBLIC_BASE_URL>`. Restart it.
-2. In this app's `.env`: the same `IG_ACCESS_TOKEN`, `IG_USER_ID` and `APP_SECRET` as the other app, and `DM_LINK_BASE=<the other app's address>` if DM links should show that address.
-3. Map each reel in one app only.
-
-## After it's up
-
-1. Log in on `/login` with `ADMIN_PHONE` / `ADMIN_PASSWORD`.
-2. **Brand & settings:** name, website, logo and look (or **Load demo data** for the Plant Store demo).
-3. **Products:** paste product links. **Reels:** set up a reel.
-4. Comment the keyword from a tester account: DM → reel page → product opens on the brand's website.
-
-## Updating, logs, backups
+## Taking it down
 
 ```bash
-cd ~/plantstore-dm && git pull && cd deploy && docker compose up -d --build   # update
-docker compose logs -f web                                                     # logs
-docker compose restart web                                                     # restart this client only
-
-# Backup (stops this client for a few seconds)
-docker compose stop web
-docker run --rm -v plantstore_data:/data -v ~/backups:/backup busybox tar czf /backup/plantstore-$(date +%F).tgz -C /data .
-docker compose start web
+cd ~/bhava-site/deploy && docker compose stop      # this project only
+sudo rm /etc/caddy/sites/bhava-site.caddy && sudo caddy validate --config /etc/caddy/Caddyfile && sudo systemctl reload caddy
 ```
 
-`npm run seed` needs the app stopped too, because only one process can open the built-in database:
+## Moving to a real domain
 
-```bash
-docker compose stop web && docker compose run --rm web npm run seed && docker compose start web
-```
+Point the domain's DNS A record at 140.238.251.141, change the address in the Caddy site file and `siteUrl` in `site.config.json`, then update as above.

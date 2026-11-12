@@ -1,0 +1,6 @@
+# Server Caddy site block for Bhava's company website. Goes in /etc/caddy/sites/bhava-site.caddy.
+# The port must match PORT in deploy/.env.
+bhava.140-238-251-141.sslip.io {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:8150
+}

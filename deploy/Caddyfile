@@ -1,0 +1,34 @@
+# Caddy inside the bhava-site container. Plain HTTP on :8080; the server's Caddy terminates TLS
+# and proxies to 127.0.0.1:<PORT>.
+{
+	admin off
+	auto_https off
+	persist_config off
+}
+
+:8080 {
+	root * /srv
+	encode zstd gzip
+
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), interest-cohort=()"
+		X-Frame-Options DENY
+		-Server
+	}
+	# site.css and site.js change their ?v= with every build, so assets can be cached; pages are rechecked.
+	@assets path /assets/*
+	header @assets Cache-Control "public, max-age=2592000"
+	@pages not path /assets/*
+	header @pages Cache-Control "no-cache"
+
+	# Clean addresses: /pricing is served from /pricing/index.html.
+	try_files {path} {path}/index.html
+	file_server
+
+	handle_errors {
+		rewrite * /404.html
+		file_server
+	}
+}

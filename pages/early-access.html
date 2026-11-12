@@ -1,0 +1,68 @@
+<section class="page-top" data-tone="neel">
+  <div class="wrap">
+    <h1>Get early access to Bhava.</h1>
+    <p>Bhava is being built now. Tell us about your shop or your page, and we'll contact you when early access opens.</p>
+  </div>
+</section>
+
+<section class="sec tight">
+  <div class="wrap ea">
+    <form class="ea-form glass" id="ea-form" action="{{ea.action}}" method="post" accept-charset="utf-8" novalidate
+      data-mode="{{ea.mode}}" data-endpoint="{{ea.endpoint}}" data-wa="{{ea.wa}}" data-email="{{ea.email}}">
+      <div class="field">
+        <label for="ea-name">Your name</label>
+        <input id="ea-name" name="name" autocomplete="name" maxlength="80" required>
+      </div>
+      <fieldset class="field-pair">
+        <legend>How should we reach you? <span>Give at least one.</span></legend>
+        <div class="field">
+          <label for="ea-phone">WhatsApp or phone number</label>
+          <input id="ea-phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" maxlength="20" placeholder="+91">
+        </div>
+        <div class="field">
+          <label for="ea-email">Email</label>
+          <input id="ea-email" name="email" type="email" inputmode="email" autocomplete="email" maxlength="120">
+        </div>
+      </fieldset>
+      <div class="field">
+        <label for="ea-ig">Instagram handle</label>
+        <div class="at"><span aria-hidden="true">@</span><input id="ea-ig" name="instagram" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="31" required></div>
+      </div>
+      <div class="field">
+        <label for="ea-sells">What do you sell? <span>Optional</span></label>
+        <input id="ea-sells" name="sells" maxlength="120" placeholder="Sarees, skincare, or I'm a creator">
+      </div>
+      <div class="hp" aria-hidden="true">
+        <label for="ea-website">Leave this empty</label>
+        <input id="ea-website" name="website" tabindex="-1" autocomplete="off">
+      </div>
+      <label class="consent">
+        <input type="checkbox" name="consent" value="yes" required>
+        <span>{{ea.consentText}}</span>
+      </label>
+      <input type="hidden" name="consentText" value="{{ea.consentText}}">
+      <input type="hidden" name="consentVersion" value="{{ea.consentVersion}}">
+      <input type="hidden" name="source" value="website">
+      <input type="hidden" name="redirect" value="{{ea.thanksUrl}}">
+      <p class="ea-error" role="alert" hidden></p>
+      <button class="btn" type="submit">{{ea.submit}}</button>
+      <p class="ea-how">{{ea.how}} <a href="/privacy">How we handle your details</a>.</p>
+    </form>
+
+    <div class="ea-done glass" id="ea-done" tabindex="-1" hidden>
+      <h2>Thank you.</h2>
+      <p class="ea-done-text">We have your details and will contact you when early access opens.</p>
+    </div>
+
+    <aside class="ea-side">
+      <h2>What happens next</h2>
+      <ol class="ea-steps">
+        <li>We keep only what you type here, to contact you.</li>
+        <li>When early access opens, we reach out on WhatsApp, phone or email.</li>
+        <li>You can start on the free plan and move up only when your shop needs more.</li>
+      </ol>
+      <p class="ea-fallback">{{ea.fallback}}</p>
+      <p class="sample">Early access is for creators and sellers on Instagram in India.</p>
+    </aside>
+  </div>
+</section>
