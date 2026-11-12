@@ -1,5 +1,7 @@
 node_modules
-.git
+data
 .env
-dist
-preview
+deploy/.env
+.git
+test
+*.log

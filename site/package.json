@@ -1,0 +1,17 @@
+{
+  "name": "bhava-website",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Bhava's public company website: a static site with no dependencies.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "preview": "node build.mjs --preview",
+    "release": "node build.mjs --release",
+    "serve": "node tools/serve.mjs",
+    "fonts": "node tools/fetch-fonts.mjs"
+  }
+}

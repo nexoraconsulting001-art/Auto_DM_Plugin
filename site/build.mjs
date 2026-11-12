@@ -11,7 +11,7 @@ const root = path.dirname(fileURLToPath(import.meta.url));
 const preview = process.argv.includes('--preview');
 const release = process.argv.includes('--release');
 const out = path.join(root, preview ? 'preview' : 'dist');
-// SITE_CONFIG points at another config, for example to try the form against a local test endpoint.
+// SITE_CONFIG points at another config, for example to try the site with a test sign-up link.
 const cfg = JSON.parse(fs.readFileSync(path.resolve(root, process.env.SITE_CONFIG || 'site.config.json'), 'utf8'));
 const read = (p) => fs.readFileSync(path.join(root, p), 'utf8');
 
@@ -26,30 +26,14 @@ const todo = (label) => {
 const fill = (value, label) => (val(value) ? esc(val(value)) : todo(label));
 
 const c = cfg.company;
-const ea = cfg.earlyAccess || {};
 const siteUrl = cfg.siteUrl.replace(/\/$/, '');
 
-// Early access: post to Bhava's own lead capture when it is set; otherwise open WhatsApp or email
-// with the details filled in. The WhatsApp number or email is also shown as a fallback.
-const endpoint = val(ea.endpoint);
-const wa = val(ea.whatsappNumber).replace(/\D/g, '');
-const eaEmail = val(ea.email) || val(c.supportEmail);
-const mode = endpoint ? 'post' : wa ? 'whatsapp' : eaEmail ? 'email' : 'none';
-const consentText = `I agree that ${c.name} may contact me about early access to Bhava by WhatsApp, phone or email.`;
-const consentVersion = crypto.createHash('sha256').update(consentText).digest('hex').slice(0, 8);
-const fallbackLinks = [
-  wa && `<a href="https://wa.me/${wa}">WhatsApp us</a>`,
-  eaEmail && `<a href="mailto:${esc(eaEmail)}">email ${esc(eaEmail)}</a>`,
-].filter(Boolean);
-const eaFallback = fallbackLinks.length
-  ? `Prefer to message us yourself? ${fallbackLinks.join(' or ')}.`
-  : todo('early access WhatsApp number or email');
-const eaHow = {
-  post: 'We use these details only to contact you about early access.',
-  whatsapp: 'Sending opens WhatsApp with your details filled in. Press send there to reach us. Nothing is stored on this website.',
-  email: 'Sending opens your email app with your details filled in. Press send there to reach us. Nothing is stored on this website.',
-  none: todo('early access endpoint, WhatsApp number or email'),
-}[mode];
+// The main call to action opens the Bhava app's sign-up page (app.signupUrl). Until that is set, the
+// buttons point at the pricing page, the gap is listed, and a release build is refused.
+const app = cfg.app || {};
+const signupUrl = val(app.signupUrl);
+if (!signupUrl) gaps.add('app sign-up link (app.signupUrl)');
+const ctaLabel = val(app.ctaLabel) || 'Start free';
 
 const values = {
   'company.name': esc(c.name),
@@ -60,18 +44,8 @@ const values = {
   'company.grievanceOfficer': fill(c.grievanceOfficer, 'grievance officer name'),
   'company.courtsCity': fill(c.courtsCity, 'city for courts'),
   policyDate: fill(cfg.policyDate, 'effective date'),
-  earlyHref: '/early-access',
-  'ea.mode': mode,
-  'ea.action': esc(endpoint),
-  'ea.endpoint': esc(endpoint),
-  'ea.wa': wa,
-  'ea.email': esc(eaEmail),
-  'ea.consentText': esc(consentText),
-  'ea.consentVersion': consentVersion,
-  'ea.thanksUrl': esc(`${siteUrl}/thanks`),
-  'ea.submit': { post: 'Send', whatsapp: 'Send on WhatsApp', email: 'Send by email', none: 'Send' }[mode],
-  'ea.how': eaHow,
-  'ea.fallback': eaFallback,
+  ctaHref: esc(signupUrl || '/pricing'),
+  ctaLabel: esc(ctaLabel),
 };
 
 const pages = [
@@ -79,8 +53,6 @@ const pages = [
   { file: 'safety.html', url: '/safety', title: 'Account safety | Bhava', description: 'How Bhava is designed to reduce the risk of bans and shadowbans, and what no tool can promise.' },
   { file: 'pricing.html', url: '/pricing', title: 'Pricing | Bhava', description: 'Start free with a creator page for your bio, and climb from automation to catalog, store and your own apps. No commission on your sales.', draft: cfg.pricesConfirmed ? '' : 'Early prices. They may change before launch.' },
   { file: 'about.html', url: '/about', title: 'About | Bhava', description: 'What the name Bhava means, who makes it and how to reach us.' },
-  { file: 'early-access.html', url: '/early-access', title: 'Get early access | Bhava', description: 'Tell us about your shop and we will contact you when early access to Bhava opens.', noDock: true },
-  { file: 'thanks.html', url: '/thanks', title: 'Thank you | Bhava', description: 'We have your details.', noindex: true, noDock: true },
   { file: 'privacy.html', url: '/privacy', title: 'Privacy policy | Bhava', description: 'What data Bhava collects, why, how long it is kept and your rights.', legal: true },
   { file: 'terms.html', url: '/terms', title: 'Terms of use | Bhava', description: 'The terms for using Bhava.', legal: true },
   { file: 'refunds.html', url: '/refunds', title: 'Refunds and cancellation | Bhava', description: 'How cancelling a Bhava plan and getting a refund works.', legal: true },
@@ -101,18 +73,19 @@ const header = (p) => `<header class="top">
       <a href="/safety">Account safety</a>
       <a href="/pricing">Pricing</a>
       <a href="/about">About</a>
-      <a class="btn" href="{{earlyHref}}">Get early access</a>
+      <a class="btn" href="{{ctaHref}}">{{ctaLabel}}</a>
     </nav>
   </div>
 </header>`;
 
-const footer = (p) => `<footer>
+const footer = `<footer>
   <div class="wrap">
-    <div class="f-links"><a href="/safety">Account safety</a><a href="/pricing">Pricing</a><a href="/about">About</a><a href="/early-access">Early access</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/refunds">Refunds</a><a href="/data-deletion">Data deletion</a></div>
+    <div class="f-links"><a href="/safety">Account safety</a><a href="/pricing">Pricing</a><a href="/about">About</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/refunds">Refunds</a><a href="/data-deletion">Data deletion</a></div>
     <p>Bhava is a product of {{company.name}}.</p>
     <p class="fine">Instagram and Facebook are trademarks of Meta Platforms, Inc. Bhava is not affiliated with or endorsed by Meta.</p>
   </div>
-</footer>${p.noDock ? '' : '\n<div class="dock" id="dock"><a class="btn" href="{{earlyHref}}">Get early access</a></div>'}`;
+</footer>
+<div class="dock" id="dock"><a class="btn" href="{{ctaHref}}">{{ctaLabel}}</a></div>`;
 
 // Fonts are self-hosted: fonts.css is put in front of the site's stylesheet, and the two faces every page
 // needs first are preloaded. The five sample looks load their own fonts only when that section is near.
@@ -125,10 +98,8 @@ const version = crypto.createHash('sha256').update(css + looksCss + js).digest('
 const PRELOAD = ['figtree-normal-latin.woff2', 'instrument-serif-normal-latin.woff2']
   .map((f) => `<link rel="preload" href="/assets/fonts/${f}" as="font" type="font/woff2" crossorigin>`).join('');
 
-// Everything comes from this site, except the early access endpoint when one is set.
-const endpointOrigin = endpoint ? new URL(endpoint, siteUrl).origin : '';
-const extra = endpointOrigin && endpointOrigin !== new URL(siteUrl).origin ? ` ${endpointOrigin}` : '';
-const CSP = `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'${extra}; form-action 'self'${extra}; base-uri 'self'; object-src 'none'`;
+// Everything the pages load comes from this site.
+const CSP = `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; form-action 'self'; base-uri 'self'; object-src 'none'`;
 
 const fileFor = (url) => (url === '/' ? 'index.html' : `${url.slice(1)}.html`);
 const relative = (html) =>
@@ -140,7 +111,7 @@ function render(p) {
   let body = read(`pages/${p.file}`);
   const note = p.legal && !cfg.legalReviewed ? 'Draft. A lawyer has not reviewed this page yet.' : p.draft;
   body = body.replace('{{draftNote}}', note ? `<p class="draftnote">${esc(note)}</p>` : '');
-  const html = `<div class="liquid" aria-hidden="true"><div class="pool"><i class="w mist"></i><i class="w neel"></i><i class="w ink"></i></div></div>\n${header(p)}\n<main>\n${body}\n</main>\n${footer(p)}`;
+  const html = `<div class="liquid" aria-hidden="true"><div class="pool"><i class="w mist"></i><i class="w neel"></i><i class="w ink"></i></div></div>\n${header(p)}\n<main>\n${body}\n</main>\n${footer}`;
   const filled = html.replace(/\{\{([\w.]+)\}\}/g, (m, k) => {
     if (!(k in values)) throw new Error(`${p.file}: unknown value ${m}`);
     return values[k];
@@ -173,7 +144,6 @@ const rendered = pages.map((p) => [p, render(p)]);
 if (release) {
   const problems = [];
   for (const g of gaps) problems.push(`missing: ${g}`);
-  if (mode === 'none') problems.push('missing: early access endpoint, WhatsApp number or email');
   if (!cfg.pricesConfirmed) problems.push('prices are not confirmed (pricesConfirmed)');
   if (!cfg.legalReviewed) problems.push('legal pages are not reviewed (legalReviewed)');
   if (problems.length) {
@@ -205,4 +175,4 @@ if (!preview) {
   fs.writeFileSync(path.join(out, 'sitemap.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`);
   fs.writeFileSync(path.join(out, 'robots.txt'), `User-agent: *\nAllow: /\nSitemap: ${siteUrl}/sitemap.xml\n`);
 }
-console.log(`Built ${pages.length} pages in ${path.relative(process.cwd(), out) || out} (early access: ${mode})${gaps.size ? `\nStill to fill in: ${[...gaps].join(', ')}` : ''}`);
+console.log(`Built ${pages.length} pages in ${path.relative(process.cwd(), out) || out}${gaps.size ? `\nStill to fill in: ${[...gaps].join(', ')}` : ''}`);

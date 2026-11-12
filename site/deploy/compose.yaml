@@ -1,0 +1,24 @@
+# Bhava's company website on the shared Oracle VM. Run from this folder: docker compose up -d --build
+# Bound to 127.0.0.1 only; the server's Caddy is the only way in.
+name: bhava-site
+
+services:
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      args:
+        BUILD_FLAGS: ${BUILD_FLAGS:-}
+    image: bhava-site:latest
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${PORT:?set PORT in deploy/.env}:8080"
+    mem_limit: 96m
+    tmpfs:
+      - /data
+      - /config
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/"]
+      interval: 60s
+      timeout: 5s
+      retries: 3

@@ -1,5 +1,9 @@
 {
   "siteUrl": "https://bhava.140-238-251-141.sslip.io",
+  "app": {
+    "signupUrl": "TODO: Bhava app sign-up URL for the \"Start free\" buttons, set when the app goes live",
+    "ctaLabel": "Start free"
+  },
   "company": {
     "name": "Nexora Consulting",
     "legalName": "TODO: registered company name, once Nexora Consulting is registered",
@@ -8,11 +12,6 @@
     "phone": "TODO: phone number to publish on the site",
     "grievanceOfficer": "TODO: grievance officer name",
     "courtsCity": "TODO: city whose courts the terms name"
-  },
-  "earlyAccess": {
-    "endpoint": "TODO: Bhava's early access lead capture URL on the QA server; the form posts there (see README)",
-    "whatsappNumber": "TODO: WhatsApp number to publish for early access, with country code, e.g. 91XXXXXXXXXX",
-    "email": "TODO: email to publish for early access (falls back to company.supportEmail)"
   },
   "policyDate": "TODO: effective date of the legal pages, e.g. 1 December 2026",
   "pricesConfirmed": false,
